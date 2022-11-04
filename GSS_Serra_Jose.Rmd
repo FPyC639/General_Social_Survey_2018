@@ -1,0 +1,245 @@
+---
+title: "General_Social_Studies_Project"
+author: "Jose M. Serra Jr."
+date: "12/12/2021"
+output: html_document
+---
+
+<h2>Adverse affects of Interpersonal, and Finical Impact on Happiness</h2>
+
+<blockquote>Using a pool of select variables from the General Social Survey one was able to construct meaningful visualizations which help assess the importance between happiness, and wealth.  Using the R the programming language one assesses begins to assess the problem.</blockquote>
+
+<p> The following R packages were used to manipulate the data, strings, and visual the data. </p>
+
+```{r packages}
+suppressPackageStartupMessages(library(tidyverse))
+##########################################################################
+#
+# This package installs many packages such as: 
+#    ggplot2, for data visualisation.
+#    dplyr, for data manipulation.
+#    tidyr, for data tidying.
+#    readr, for data import.
+#    purrr, for functional programming.
+#    tibble, for tibbles, a modern re-imagining of data frames.
+#    stringr, for strings.
+#    forcats, for factors.
+##########################################################################
+suppressPackageStartupMessages(library(descr))
+##########################################################################
+#
+#
+# Statistics Based Analysis
+#
+##########################################################################
+suppressPackageStartupMessages(library(plotly))
+##########################################################################
+#
+#
+#          The package of plotly is used mainly for interactive plots.
+#
+#
+##########################################################################
+suppressPackageStartupMessages(library(gssr))
+##########################################################################
+#
+# Load GSS data.
+#
+##########################################################################
+```
+
+To illustrate my theme which I created I shall use it in my various plots to commence the GSS analysis.
+
+```{r}
+
+theme1 <- theme(plot.title=element_text(face="bold", size="20", color="slateblue"), axis.title=element_text(face="bold",  size=9, color="violetred"),               axis.text=element_text(face="bold", size=9, color="steelblue"), panel.background=element_rect(fill="white",  color="darkblue"), panel.grid.major.y=element_line(color="thistle",   linetype=1),panel.grid.minor.x=element_blank(), legend.position="top")
+
+data(Salaries, package="carData")
+ptest<- ggplot(Salaries, aes(x=rank, y=salary, fill=sex)) +
+  geom_boxplot() +
+  labs(title="         Salary by Rank and Sex",  x="Rank", y="Salary")
+ptest
+ptest + theme1
+
+
+
+```
+
+<h3> Data Cleanup </h3>
+
+<p>After importing the packages data cleanup can now begin. For our first step one will create a subset of the 2018 General Social Survey.</p>
+```{r message=FALSE}
+if (!require("drat")) {
+    install.packages("drat")
+    library("drat")
+}
+```
+
+```{r}
+drat::addRepo("kjhealy")
+```
+
+
+
+```{r data_cleanup, message=FALSE}
+
+gss18 <- haven::read_sav("GSS2018.sav") ##Data Retrival
+target_data <- gss18 %>%
+  select(WRKSTAT,HRS1,HRS2,MARITAL,DIVORCE,SPWRKSTA,SPHRS1,SPHRS2,SPOCC10,SPPRES10,SPEVWORK,SPPRES105PLUS,WRKSLF, WRKGOVT,HAPPY)
+colnames(target_data) <- c('wrkstat','hrs1','hrs2','marital','divorce', 'spwrksta','sphrs1','sphrs2','spocc10','sppres10','spevwork','sppres105plus', 'wrkslf',
+         'wrkgovt','happy')
+td_cleanup <- as.data.frame(lapply(target_data,forcats::as_factor))
+```
+Data Type, and Functional Understanding of Selected Variable
+
+The data output of showed the different structure that is within the dataset even revealing the numeric, and the factor data types. This output is really useful because it reveals to others the importance of understanding the problem fully expressed in this command. However, there are other useful structure creations such as the following.
+
+```{r str_data}
+str(head(td_cleanup))
+```
+Here the data shows a limited but still comprehensive view of the data. It leads to a better understanding of the problem.
+
+<h2> Analysis One </h2>
+
+
+Looking first at two variables one can begin an analysis on two very important questions. If working, part-time or full time: How many hours did you work last week, at all jobs, which is hrs1 and If with a job, but not at work: How many hours a week do you usually work, at all job hrs1.
+
+
+```{r hrs1andhrs2}
+td_cleanup$hrs1 <- recode(td_cleanup$hrs1,`89+ hrs` = "89", `IAP` = "-999", `DK`= "-999", `NA` = "-999")
+td_cleanup$hrs2 <- recode(td_cleanup$hrs2,`89+ hrs` = "89", `IAP` = "-999", `DK`= "-999", `NA` = "-999")
+hrs1_tabulate <- table(factor(cut(as.numeric(as.vector(td_cleanup$hrs1)), c(-1000,0,20,40,60,89),labels = c("NA","LT 20 Hours", "MT 20 LT 40", "MT 40 LT 60", "MT 60"))))
+hrs2_tabulate <- table(factor(cut(as.numeric(as.vector(td_cleanup$hrs2)), c(-1000,0,20,40,60,89),labels = c("NA","LT 20 Hours", "MT 20 LT 40", "MT 40 LT 60", "MT 60"))))
+```
+
+<p> Here comes the data plots for the hours which an individual works</p>
+
+```{r plothrs1hrs2}
+a <- cbind(hrs1_tabulate,hrs2_tabulate, rownames(hrs1_tabulate))
+df1 <- data.frame(a)
+df1$hrs1_tabulate <- as.numeric(df1$hrs1_tabulate)
+df1$hrs2_tabulate <- as.numeric(df1$hrs2_tabulate)
+colnames(df1) <- c("hrs1_tabulate", "hrs2_tabulate", "Categories")
+df2 <- tidyr::pivot_longer(df1,cols = c("hrs1_tabulate","hrs2_tabulate"), names_to='variable', values_to="value")
+
+ggplot(df2, aes(x=Categories, y=value, fill=variable)) +
+    geom_bar(stat='identity', position='dodge')+
+  theme1 ##implemented theme here
+
+```
+
+<p>After unavailable errors were taken out of the plot the plot resulted to look as follows:</p>
+
+```{r no_NA_Data}
+df2_mod <- df2[-c(1,2),]
+sumt <- sum(df2_mod$value)
+
+ggplotly(ggplot(df2_mod, aes(x=Categories, y=value/sumt*100, fill=variable)) +
+    geom_bar(stat='identity', position='dodge')+
+      labs(y="Proportion"))
+
+```
+
+<p>Here we can see the that there is a greater number of hours of the people that were working than the people that were not working and reported hours which they had worked.</p>
+
+
+<h2> Number of Spare Hours </h2>
+
+The next pairing of hours that one will looking at is the number of which the individuals' significant other were working were reported reported.</p>
+
+```{r sphrs}
+td_cleanup$sphrs1 <- recode(td_cleanup$sphrs1,`89+ hrs` = "89", `IAP` = "-999", `DK`= "-999", `NA` = "-999")
+td_cleanup$sphrs2 <- recode(td_cleanup$sphrs2,`89+ hrs` = "89", `IAP` = "-999", `DK`= "-999", `NA` = "-999")
+sphrs1_tabulate <- table(factor(cut(as.numeric(as.vector(td_cleanup$sphrs1)), c(-1000,0,20,40,60,89),labels = c("NA","LT 20 Hours", "MT 20 LT 40", "MT 40 LT 60", "MT 60"))))
+sphrs2_tabulate <- table(factor(cut(as.numeric(as.vector(td_cleanup$sphrs2)), c(-1000,0,20,40,60,89),labels = c("NA","LT 20 Hours", "MT 20 LT 40", "MT 40 LT 60", "MT 60"))))
+```
+
+<p>Now comes the visualization for the hours which the spouse works.  This data be a very prevalent predictor in an individuals happiness.</p>
+
+
+```{r}
+b <- cbind(sphrs1_tabulate,sphrs2_tabulate, rownames(sphrs1_tabulate))
+df3 <- data.frame(b)
+df3$sphrs1_tabulate <- as.numeric(df3$sphrs1_tabulate)
+df3$sphrs2_tabulate <- as.numeric(df3$sphrs2_tabulate)
+colnames(df3) <- c("sphrs1_tabulate", "sphrs2_tabulate", "Categories")
+df4 <- tidyr::pivot_longer(df3,cols = c("sphrs1_tabulate","sphrs2_tabulate"), names_to='variable', values_to="value")
+
+ggplot(df4, aes(x=Categories, y=value, fill=variable)) +
+    geom_bar(stat='identity', position='dodge')
+
+
+```
+<p> After removing NA's one can see a clearer view of the data, and even a proportionate.</p>
+
+```{r}
+df4_mod <- df4[-c(1,2),]
+sumt_1 <- sum(df4_mod$value)
+
+ggplotly(ggplot(df4_mod, aes(x=Categories, y=value/sumt_1*100, fill=variable)) +
+    geom_bar(stat='identity', position='dodge')+
+      labs(y="Proportion"))
+```
+
+
+```{r}
+work_Status <- td_cleanup$wrkstat
+work_Status <- recode(work_Status, "IAP" = "NA")
+df5 <- data.frame(table(work_Status))
+rownames(df5) <- df5$work_Status
+df6 <- tidyr::pivot_longer(df5, cols=c("Freq"),names_to='variable', values_to="value")
+ggplot(data = df6, aes(x=work_Status,y=value,fill= work_Status))+
+  geom_bar(stat='identity', position='dodge')+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  labs(x="Employment Type",y="Number of Cases")
+```
+
+```{r}
+df6_mod <- df6[-c(9),]
+sumt_2 <- sum(df6_mod$value)
+
+ggplotly(ggplot(df6_mod, aes(x=work_Status, y=value/sumt_2*100, fill=work_Status)) +
+    geom_bar(stat='identity', position='dodge')+
+      labs(y="Proportion")+
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  labs(x="Employment Type",y="Number of Cases"))
+
+```
+
+```{r}
+df7 <- data.frame(table(td_cleanup$marital))
+df8 <- tidyr::pivot_longer(df7, cols=c("Freq"),names_to='variable', values_to="value")
+ggplot(data = df8, aes(x=Var1,y=value,fill= Var1))+
+  geom_bar(stat='identity', position='dodge')+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  labs(x="Marriage Type",y="Number of Cases")
+
+```
+
+
+```{r}
+
+df9 <- data.frame(table(fct_drop(td_cleanup$happy)))
+df9 <- df9[c(1,2,3),]
+df10<- tidyr::pivot_longer(df9, cols=c("Freq"),names_to='variable', values_to="value")
+ggplot(data = df10, aes(x=Var1,y=value,fill= Var1))+
+  geom_bar(stat='identity', position='dodge')+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  labs(x="Happiness Status",y="Number of Cases")
+
+
+
+```
+
+
+
+
+
+
+
+
+
